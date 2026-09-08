@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id               String          @id @default(uuid())
+  name             String
+  email            String          @unique
+  passwordHash     String
+  role             Role            @default(CLIENT)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  lawyerProfile    LawyerProfile?
+  clientAppointments Appointment[]   @relation("ClientAppointments")
+  lawyerAppointments Appointment[]   @relation("LawyerAppointments")
+  reviewsGiven     Review[]        @relation("ClientReviews")
+  reviewsReceived  Review[]        @relation("LawyerReviews")
+}
+
+enum Role {
+  CLIENT
+  LAWYER
+  ADMIN
+}
+
+model LawyerProfile {
+  id                     String          @id @default(uuid())
+  userId                 String          @unique
+  user                   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio                    String?
+  barRegistrationNumber  String          @unique
+  experienceYears        Int
+  consultationFee        Float
+  isVerified             Boolean         @default(false)
+  specialties            String?
+  location               String?
+  languages              String?
+  education              String?
+  imageUrl               String?
+  
+  domains                LawyerDomain[]
+}
+
+model LegalDomain {
+  id          String          @id @default(uuid())
+  name        String          @unique
+  description String?
+  
+  lawyers     LawyerDomain[]
+}
+
+model LawyerDomain {
+  lawyerId    String
+  domainId    String
+  
+  lawyer      LawyerProfile   @relation(fields: [lawyerId], references: [id], onDelete: Cascade)
+  domain      LegalDomain     @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@id([lawyerId, domainId])
+}
+
+model Appointment {
+  id          String          @id @default(uuid())
+  clientId    String
+  lawyerId    String
+  scheduledAt DateTime
+  type        ConsultationType @default(VIDEO)
+  status      AppointmentStatus @default(PENDING)
+  notes       String?
+  documentUrl String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  client      User            @relation("ClientAppointments", fields: [clientId], references: [id])
+  lawyer      User            @relation("LawyerAppointments", fields: [lawyerId], references: [id])
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum ConsultationType {
+  CHAT
+  AUDIO
+  VIDEO
+}
+
+model Review {
+  id          String          @id @default(uuid())
+  clientId    String
+  lawyerId    String
+  rating      Int
+  comment     String?
+  createdAt   DateTime        @default(now())
+
+  client      User            @relation("ClientReviews", fields: [clientId], references: [id])
+  lawyer      User            @relation("LawyerReviews", fields: [lawyerId], references: [id])
+}
